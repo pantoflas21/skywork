@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { 
   GraduationCap, 
@@ -32,6 +32,17 @@ import {
 } from 'lucide-react';
 import './index.css';
 
+// Importar componentes criados
+import Setup from '@/pages/Setup';
+import SuperAdminDashboard from '@/pages/superadmin/Dashboard';
+import SuperAdminNetworks from '@/pages/superadmin/Networks';
+import SuperAdminSchools from '@/pages/superadmin/Schools';
+import NetworkAdminDashboard from '@/pages/networkadmin/Dashboard';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
+import SecretaryStudents from '@/pages/secretaria/Alunos';
+import AdminUsers from '@/pages/admin/Usuarios';
+
 // ==================== COMPONENTES PRINCIPAIS ====================
 
 // Login Component
@@ -40,20 +51,53 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
-    setTimeout(() => {
-      let route = '/aluno/dashboard';
-      if (email.includes('admin')) route = '/admin/dashboard';
-      else if (email.includes('secretaria')) route = '/secretaria/dashboard';
-      else if (email.includes('professor')) route = '/professor/dashboard';
+    try {
+      // Usar autenticação real do Supabase
+      const { supabase } = await import('@/integrations/supabase/client');
       
-      navigate(route);
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (signInError) {
+        setError('Email ou senha incorretos');
+        setLoading(false);
+        return;
+      }
+
+      // Buscar role do usuário
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      // Redirecionar baseado no role
+      const role = userData?.role || 'aluno';
+      const routes: Record<string, string> = {
+        'super_admin': '/superadmin/dashboard',
+        'network_admin': '/networkadmin/dashboard',
+        'admin': '/admin/dashboard',
+        'secretaria': '/secretaria/dashboard',
+        'professor': '/professor/dashboard',
+        'aluno': '/aluno/dashboard'
+      };
+
+      navigate(routes[role] || '/');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Erro ao fazer login. Tente novamente.');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -67,6 +111,12 @@ const Login = () => {
             <h1 className="text-3xl font-bold text-gray-900">ALETHEIA</h1>
             <p className="text-gray-600 mt-2">Sistema de Gestão Escolar</p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
@@ -102,14 +152,16 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Contas de Demonstração:</h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p><strong>Admin:</strong> admin@aletheia.edu</p>
-              <p><strong>Secretaria:</strong> secretaria@aletheia.edu</p>
-              <p><strong>Professor:</strong> professor@aletheia.edu</p>
-              <p><strong>Aluno:</strong> aluno@aletheia.edu</p>
-            </div>
+          <div className="mt-6 text-center">
+            <Link to="/setup" className="text-sm text-blue-600 hover:text-blue-700">
+              Primeira vez? Crie sua conta de administrador
+            </Link>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link to="/forgot-password" className="text-sm text-gray-600 hover:text-gray-700">
+              Esqueceu sua senha?
+            </Link>
           </div>
         </div>
       </div>
@@ -3599,17 +3651,68 @@ const StudentDashboard = () => {
 
 // Main App Component
 const App = () => {
+  // Super-admin já foi criado, então sempre mostrar login
+  // Para reativar verificação, descomente o código abaixo
+  
+  /*
+  const [checkingSetup, setCheckingSetup] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
+
+  useEffect(() => {
+    const checkSuperAdminExists = async () => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        const { count, error } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'super_admin');
+        
+        if (error) {
+          console.error('Error checking super admin:', error);
+        }
+        
+        setNeedsSetup(count === 0);
+      } catch (err) {
+        console.error('Error checking setup:', err);
+      } finally {
+        setCheckingSetup(false);
+      }
+    };
+
+    checkSuperAdminExists();
+  }, []);
+
+  if (checkingSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <GraduationCap className="h-16 w-16 text-blue-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+  */
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+        <Route path="/superadmin/networks" element={<SuperAdminNetworks />} />
+        <Route path="/superadmin/schools" element={<SuperAdminSchools />} />
+        <Route path="/networkadmin/dashboard" element={<NetworkAdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/usuarios" element={<UsersPage />} />
+        <Route path="/admin/usuarios" element={<AdminUsers />} />
         <Route path="/admin/financeiro" element={<FinancialPage />} />
         <Route path="/admin/configuracoes" element={<SettingsPage />} />
         <Route path="/secretaria/dashboard" element={<SecretaryDashboard />} />
-        <Route path="/secretaria/alunos" element={<SecretaryStudentsPage />} />
+        <Route path="/secretaria/alunos" element={<SecretaryStudents />} />
         <Route path="/secretaria/turmas" element={<SecretaryClassesPage />} />
         <Route path="/secretaria/disciplinas" element={<SecretarySubjectsPage />} />
         <Route path="/secretaria/planos" element={<SecretaryLessonPlansPage />} />

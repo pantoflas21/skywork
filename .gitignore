@@ -37,6 +37,11 @@ pids/
 !.env.*.example
 !.env.local.example
 
+# --- Security: Scripts with sensitive keys ---
+create-super-admin.js
+CREATE_SUPER_ADMIN_SIMPLE.sql
+INSTRUCOES_CRIAR_SUPER_ADMIN.md
+
 # --- Coverage ---
 coverage/
 .nyc_output/

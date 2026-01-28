@@ -1,0 +1,150 @@
+============================================
+CREDENCIAIS DE TESTE - SISTEMA ALETHEIA
+============================================
+
+URL DA APLICAÇÃO:
+http://localhost:5173
+
+============================================
+USUÁRIOS CRIADOS:
+============================================
+
+1. SUPER ADMIN
+   Nome:       Super Administrador
+   Email:      superadmin@aletheia.com
+   Senha:      Super@123456
+   Dashboard:  http://localhost:5173/#/superadmin/dashboard
+   Acesso:     Todas as redes e escolas do sistema
+
+2. NETWORK ADMIN
+   Nome:       Carlos Silva
+   Email:      carlos.silva@redemunicipal.edu.br
+   Senha:      Network@123
+   Dashboard:  http://localhost:5173/#/networkadmin/dashboard
+   Rede:       Rede Municipal de Ensino
+   Acesso:     Escolas da sua rede
+
+3. ADMIN (ESCOLA)
+   Nome:       Maria Santos
+   Email:      maria.santos@escolapedro.edu.br
+   Senha:      Admin@123
+   Dashboard:  http://localhost:5173/#/admin/dashboard
+   Escola:     Escola Municipal Dom Pedro II
+   Acesso:     Gestão completa da escola
+
+4. SECRETARIA
+   Nome:       Ana Costa
+   Email:      ana.costa@escolapedro.edu.br
+   Senha:      Secret@123
+   Dashboard:  http://localhost:5173/#/secretaria/dashboard
+   Escola:     Escola Municipal Dom Pedro II
+   Acesso:     Alunos, turmas e matrículas
+
+5. PROFESSOR
+   Nome:       João Oliveira
+   Email:      joao.oliveira@escolapedro.edu.br
+   Senha:      Prof@123
+   Dashboard:  http://localhost:5173/#/professor/dashboard
+   Escola:     Escola Municipal Dom Pedro II
+   Turma:      3º Ano A (Regente)
+   Acesso:     Notas, frequência e aulas
+
+6. ALUNO
+   Nome:       Júlia Fernandes Costa
+   Email:      julia.fernandes@escolapedro.edu.br
+   Senha:      Aluno@123
+   Dashboard:  http://localhost:5173/#/aluno/dashboard
+   Escola:     Escola Municipal Dom Pedro II
+   Turma:      3º Ano A
+   Matrícula:  (gerada automaticamente)
+   Acesso:     Notas e frequência pessoal
+
+============================================
+DADOS CRIADOS:
+============================================
+
+ESTRUTURA:
+- 1 Rede de Ensino: Rede Municipal de Ensino
+- 1 Escola: Escola Municipal Dom Pedro II
+- 1 Turma: 3º Ano A (Fundamental 1, Matutino)
+- 2 Alunos: Pedro Henrique Silva e Júlia Fernandes Costa
+
+DADOS LANÇADOS:
+- Frequência: Ambos os alunos presentes em 27/01/2026
+- Notas: Matemática - 1º Bimestre
+  * Pedro: 8.5
+  * Júlia: 9.0
+
+============================================
+ORDEM DE TESTE RECOMENDADA:
+============================================
+
+1º - Super Admin
+   → Login e criar estrutura (rede e escola)
+   → Verificar dashboard com estatísticas
+
+2º - Network Admin
+   → Login e verificar visão da rede
+   → Ver apenas escola "Dom Pedro II"
+
+3º - Admin (Escola)
+   → Login e criar usuários (secretaria/professor)
+   → Verificar dashboard da escola
+
+4º - Secretaria
+   → Login e matricular alunos
+   → Criar turmas
+
+5º - Professor
+   → Login e lançar frequência
+   → Lançar notas
+
+6º - Aluno
+   → Login e visualizar notas (9.0)
+   → Visualizar frequência (100%)
+
+============================================
+URLS PRINCIPAIS:
+============================================
+
+Login:           http://localhost:5173/#/login
+Setup:           http://localhost:5173/#/setup
+
+Dashboards:
+Super Admin:     http://localhost:5173/#/superadmin/dashboard
+Network Admin:   http://localhost:5173/#/networkadmin/dashboard
+Admin:           http://localhost:5173/#/admin/dashboard
+Secretaria:      http://localhost:5173/#/secretaria/dashboard
+Professor:       http://localhost:5173/#/professor/dashboard
+Aluno:           http://localhost:5173/#/aluno/dashboard
+
+============================================
+COMO INICIAR O SERVIDOR:
+============================================
+
+1. Abra PowerShell na pasta do projeto
+2. Execute:
+   cd C:\Users\Pantóflas\Downloads\net
+   npm run dev
+
+3. Aguarde mensagem: "Local: http://localhost:5173/"
+4. Abra o navegador em: http://localhost:5173
+
+============================================
+VERIFICAÇÕES DE SEGURANÇA:
+============================================
+
+✓ Aluno NÃO vê dados de outros alunos
+✓ Professor NÃO vê turmas de outros professores
+✓ Secretaria NÃO vê alunos de outras escolas
+✓ Admin NÃO vê dados de outras escolas
+✓ Network Admin NÃO vê outras redes
+
+============================================
+SUPORTE:
+============================================
+
+Consulte o arquivo GUIA_TESTES_COMPLETO.md
+para instruções detalhadas passo a passo.
+
+============================================

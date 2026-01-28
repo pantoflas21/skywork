@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DashboardLayout } from '@/components/DashboardLayout';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -17,6 +17,23 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Save,
@@ -26,324 +43,607 @@ import {
   CheckCircle2,
   AlertCircle,
   Search,
-  ChevronLeft
+  ChevronLeft,
+  Plus,
+  LogOut,
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  ClipboardCheck,
+  BarChart3,
+  Brain,
+  GraduationCap
 } from 'lucide-react';
-import { Grade, Student, Class, Subject } from '@/types';
-import {
-  calculateAnnualAverage,
-  formatGrade,
-  validateGradeInput,
-  isStudentApproved
-} from '@/utils/gradeUtils';
-import { GRADE_CONFIG, ROUTES } from '@/constants';
-import { Link } from 'react-router-dom';
+import { supabase } from '@/services/api';
 import { toast } from 'sonner';
 
+interface ClassInfo {
+  id: string;
+  name: string;
+  grade: string;
+}
+
+interface StudentGrade {
+  student_id: string;
+  full_name: string;
+  registration_number: string;
+  grades: {
+    quarter: number;
+    grade: number;
+    assessment_name: string;
+  }[];
+}
+
 const TeacherGrades: React.FC = () => {
-  // Mock data for initial state - In a real app, this would come from an API based on route params
+  const navigate = useNavigate();
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
+  const [schoolId, setSchoolId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [classInfo] = useState<Class>({
-    id: 'class-1',
-    name: '9º Ano A',
-    gradeLevel: 'fundamental_2',
-    schoolYear: 2024,
-    shift: 'matutino',
-    schoolId: 'school-1',
-    teacherId: 'teacher-1'
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(1);
+  const [studentsGrades, setStudentsGrades] = useState<StudentGrade[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newAssessment, setNewAssessment] = useState({
+    name: '',
+    type: 'prova',
+    subject: 'Matemática',
   });
 
-  const [subjectInfo] = useState<Subject>({
-    id: 'sub-1',
-    name: 'Matemática',
-    code: 'MAT-09',
-    schoolId: 'school-1'
-  });
-
-  const [students] = useState<Student[]>([
-    { id: '1', userId: 'u1', classId: 'class-1', registrationNumber: '2024001', birthDate: '2010-05-15', guardianName: 'Maria Silva', guardianPhone: '11999999999', specialNeeds: false, profile: { id: 'u1', fullName: 'Ana Beatriz Souza', email: 'ana@email.com', role: 'aluno', schoolId: 's1', active: true } } as Student,
-    { id: '2', userId: 'u2', classId: 'class-1', registrationNumber: '2024002', birthDate: '2010-08-20', guardianName: 'João Santos', guardianPhone: '11888888888', specialNeeds: true, specialNeedsDescription: 'TDAH', profile: { id: 'u2', fullName: 'Bruno Oliveira', email: 'bruno@email.com', role: 'aluno', schoolId: 's1', active: true } } as Student,
-    { id: '3', userId: 'u3', classId: 'class-1', registrationNumber: '2024003', birthDate: '2010-02-10', guardianName: 'Carla Lima', guardianPhone: '11777777777', specialNeeds: false, profile: { id: 'u3', fullName: 'Carlos Eduardo Lima', email: 'carlos@email.com', role: 'aluno', schoolId: 's1', active: true } } as Student,
-  ]);
-
-  const [grades, setGrades] = useState<Record<string, Grade>>({
-    '1': { id: 'g1', studentId: '1', subjectId: 'sub-1', classId: 'class-1', quarter1: 8.5, quarter2: 7.0, quarter3: null, quarter4: null, finalAverage: null, status: 'cursando', academicYear: 2024 },
-    '2': { id: 'g2', studentId: '2', subjectId: 'sub-1', classId: 'class-1', quarter1: 6.0, quarter2: 5.5, quarter3: null, quarter4: null, finalAverage: null, status: 'cursando', academicYear: 2024 },
-    '3': { id: 'g3', studentId: '3', subjectId: 'sub-1', classId: 'class-1', quarter1: 9.5, quarter2: 9.0, quarter3: null, quarter4: null, finalAverage: null, status: 'cursando', academicYear: 2024 },
-  });
-
-  const handleGradeChange = (studentId: string, quarter: keyof Grade, value: string) => {
-    const validatedValue = validateGradeInput(value);
-    
-    setGrades(prev => {
-      const updatedGrade = { ...prev[studentId], [quarter]: validatedValue };
-      const average = calculateAnnualAverage(updatedGrade);
-      
-      let status: Grade['status'] = 'cursando';
-      if (average !== null) {
-        status = isStudentApproved(average) ? 'aprovado' : 'reprovado';
+  // Carregar usuário logado
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
       }
 
-      return {
-        ...prev,
-        [studentId]: {
-          ...updatedGrade,
-          finalAverage: average,
-          status
-        }
-      };
-    });
+      setUserEmail(user.email || '');
+      setUserId(user.id);
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('school_id, full_name, role')
+        .eq('id', user.id)
+        .single();
+
+      if (userData?.school_id) {
+        setSchoolId(userData.school_id);
+        setUserName(userData.full_name);
+      }
+    };
+    loadUser();
+  }, [navigate]);
+
+  // Carregar turmas do professor
+  useEffect(() => {
+    if (!schoolId || !userId) return;
+    loadClasses();
+  }, [schoolId, userId]);
+
+  // Carregar notas quando turma/bimestre são selecionados
+  useEffect(() => {
+    if (!selectedClassId || !selectedQuarter) return;
+    loadGrades();
+  }, [selectedClassId, selectedQuarter]);
+
+  const loadClasses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, name, grade')
+        .eq('school_id', schoolId)
+        .eq('teacher_id', userId)
+        .eq('active', true)
+        .order('name');
+
+      if (error) throw error;
+      setClasses(data || []);
+
+      if (data && data.length > 0) {
+        setSelectedClassId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      toast.error('Erro ao carregar turmas');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSave = () => {
-    toast.success('Notas salvas com sucesso!');
+  const loadGrades = async () => {
+    try {
+      // Buscar alunos da turma
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id, full_name, registration_number')
+        .eq('class_id', selectedClassId)
+        .eq('active', true)
+        .order('full_name');
+
+      if (studentsError) throw studentsError;
+
+      // Buscar notas do bimestre selecionado
+      const { data: grades, error: gradesError } = await supabase
+        .from('grades')
+        .select('student_id, grade, assessment_name, quarter')
+        .eq('class_id', selectedClassId)
+        .eq('quarter', selectedQuarter);
+
+      if (gradesError && gradesError.code !== 'PGRST116') {
+        console.error('Error loading grades:', gradesError);
+      }
+
+      // Mapear alunos com suas notas
+      const gradesMap = new Map<string, any[]>();
+      (grades || []).forEach((g) => {
+        if (!gradesMap.has(g.student_id)) {
+          gradesMap.set(g.student_id, []);
+        }
+        gradesMap.get(g.student_id)?.push(g);
+      });
+
+      const studentsWithGrades: StudentGrade[] = (students || []).map((s) => ({
+        student_id: s.id,
+        full_name: s.full_name,
+        registration_number: s.registration_number,
+        grades: gradesMap.get(s.id) || [],
+      }));
+
+      setStudentsGrades(studentsWithGrades);
+    } catch (error) {
+      console.error('Error loading grades:', error);
+      toast.error('Erro ao carregar notas');
+    }
+  };
+
+  const handleAddAssessment = async () => {
+    if (!newAssessment.name.trim()) {
+      toast.error('Digite o nome da avaliação');
+      return;
+    }
+
+    if (!selectedClassId) {
+      toast.error('Selecione uma turma');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Criar registros de notas vazias para todos os alunos
+      const records = studentsGrades.map((s) => ({
+        student_id: s.student_id,
+        class_id: selectedClassId,
+        teacher_id: userId,
+        school_id: schoolId,
+        subject: newAssessment.subject,
+        assessment_type: newAssessment.type,
+        assessment_name: newAssessment.name,
+        grade: 0,
+        quarter: selectedQuarter,
+        date: new Date().toISOString().split('T')[0],
+      }));
+
+      const { error } = await supabase
+        .from('grades')
+        .insert(records);
+
+      if (error) throw error;
+
+      toast.success('Avaliação criada com sucesso!');
+      setIsAddDialogOpen(false);
+      setNewAssessment({ name: '', type: 'prova', subject: 'Matemática' });
+      loadGrades();
+    } catch (error: any) {
+      console.error('Error creating assessment:', error);
+      if (error.message?.includes('relation "grades" does not exist')) {
+        toast.error('Tabela de notas ainda não foi criada. Execute a migration.');
+      } else {
+        toast.error('Erro ao criar avaliação');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGradeChange = (studentId: string, assessmentName: string, value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0 || numValue > 10) {
+      return;
+    }
+
+    setStudentsGrades((prev) =>
+      prev.map((s) => {
+        if (s.student_id !== studentId) return s;
+
+        return {
+          ...s,
+          grades: s.grades.map((g) =>
+            g.assessment_name === assessmentName ? { ...g, grade: numValue } : g
+          ),
+        };
+      })
+    );
+  };
+
+  const handleSaveGrades = async () => {
+    setSaving(true);
+    try {
+      // Atualizar todas as notas alteradas
+      const updates = studentsGrades.flatMap((s) =>
+        s.grades.map((g) => ({
+          student_id: s.student_id,
+          class_id: selectedClassId,
+          teacher_id: userId,
+          school_id: schoolId,
+          subject: newAssessment.subject,
+          assessment_type: 'prova',
+          assessment_name: g.assessment_name,
+          grade: g.grade,
+          quarter: selectedQuarter,
+          date: new Date().toISOString().split('T')[0],
+        }))
+      );
+
+      // Deletar registros existentes e inserir novos
+      await supabase
+        .from('grades')
+        .delete()
+        .eq('class_id', selectedClassId)
+        .eq('quarter', selectedQuarter);
+
+      const { error } = await supabase
+        .from('grades')
+        .upsert(updates);
+
+      if (error) throw error;
+
+      toast.success('Notas salvas com sucesso!');
+      loadGrades();
+    } catch (error: any) {
+      console.error('Error saving grades:', error);
+      if (error.message?.includes('relation "grades" does not exist')) {
+        toast.error('Tabela de notas ainda não foi criada. Execute a migration.');
+      } else {
+        toast.error('Erro ao salvar notas');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  const calculateAverage = (grades: { grade: number }[]) => {
+    if (grades.length === 0) return null;
+    const sum = grades.reduce((acc, g) => acc + g.grade, 0);
+    return (sum / grades.length).toFixed(2);
   };
 
   const filteredStudents = useMemo(() => {
-    return students.filter(student => 
-      student.profile?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.registrationNumber.includes(searchQuery)
+    return studentsGrades.filter(
+      (s) =>
+        s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.registration_number.includes(searchQuery)
     );
-  }, [students, searchQuery]);
+  }, [studentsGrades, searchQuery]);
 
-  const menuItems = [
-    { icon: Calculator, label: 'Dashboard', path: ROUTES.TEACHER.DASHBOARD },
-    { icon: Info, label: 'Minhas Turmas', path: ROUTES.TEACHER.MY_CLASSES },
-    { icon: Save, label: 'Notas', path: ROUTES.TEACHER.GRADES },
-  ];
-
-  return (
-    <DashboardLayout menuItems={menuItems}>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link to={ROUTES.TEACHER.MY_CLASSES} className="hover:text-primary flex items-center gap-1">
-                <ChevronLeft className="h-4 w-4" /> Turmas
-              </Link>
-              <span>/</span>
-              <span>{classInfo.name}</span>
-              <span>/</span>
-              <span className="text-foreground font-medium">{subjectInfo.name}</span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">Lançamento de Notas</h1>
-            <p className="text-muted-foreground">
-              Gerencie o desempenho acadêmico dos alunos para o ano letivo de {classInfo.schoolYear}.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => window.location.reload()} className="hidden sm:flex">
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Sincronizar
-            </Button>
-            <Button onClick={handleSave} className="bg-primary text-white">
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Alterações
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Lista de Alunos</CardTitle>
-                  <CardDescription>Insira as notas bimestrais (0.0 a 10.0)</CardDescription>
-                </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar aluno..."
-                    className="pl-8 h-9"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[250px]">Aluno</TableHead>
-                      <TableHead className="text-center">1º Bim</TableHead>
-                      <TableHead className="text-center">2º Bim</TableHead>
-                      <TableHead className="text-center">3º Bim</TableHead>
-                      <TableHead className="text-center">4º Bim</TableHead>
-                      <TableHead className="text-center font-bold text-primary">Média</TableHead>
-                      <TableHead className="text-right">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student) => {
-                      const grade = grades[student.id] || {};
-                      const isPassing = grade.finalAverage ? isStudentApproved(grade.finalAverage) : null;
-
-                      return (
-                        <TableRow key={student.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{student.profile?.fullName}</span>
-                              <span className="text-xs text-muted-foreground">Matrícula: {student.registrationNumber}</span>
-                              {student.specialNeeds && (
-                                <Badge variant="outline" className="mt-1 w-fit text-[10px] border-yellow-500 text-yellow-600">
-                                  <AlertCircle className="h-3 w-3 mr-1" /> PNE
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Input
-                              type="text"
-                              className="w-16 mx-auto text-center h-8"
-                              value={grade.quarter1 !== null ? grade.quarter1.toString() : ''}
-                              onChange={(e) => handleGradeChange(student.id, 'quarter1', e.target.value)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Input
-                              type="text"
-                              className="w-16 mx-auto text-center h-8"
-                              value={grade.quarter2 !== null ? grade.quarter2.toString() : ''}
-                              onChange={(e) => handleGradeChange(student.id, 'quarter2', e.target.value)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Input
-                              type="text"
-                              className="w-16 mx-auto text-center h-8"
-                              value={grade.quarter3 !== null ? grade.quarter3.toString() : ''}
-                              onChange={(e) => handleGradeChange(student.id, 'quarter3', e.target.value)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Input
-                              type="text"
-                              className="w-16 mx-auto text-center h-8"
-                              value={grade.quarter4 !== null ? grade.quarter4.toString() : ''}
-                              onChange={(e) => handleGradeChange(student.id, 'quarter4', e.target.value)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center font-bold text-primary">
-                            {formatGrade(grade.finalAverage)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {grade.finalAverage !== null ? (
-                              <Badge className={isPassing ? "bg-green-500" : "bg-red-500"}>
-                                {isPassing ? 'Aprovado' : 'Reprovado'}
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">Cursando</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  Critérios de Avaliação
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  A média bimestral é composta pela soma ponderada das seguintes atividades:
-                </p>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-blue-500" />
-                      Participação em Aula
-                    </span>
-                    <span className="font-semibold">20%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-cyan-500" />
-                      Trabalhos e Projetos
-                    </span>
-                    <span className="font-semibold">30%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-indigo-500" />
-                      Avaliações Parciais
-                    </span>
-                    <span className="font-semibold">25%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                      Avaliação Final
-                    </span>
-                    <span className="font-semibold">25%</span>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Média para Aprovação:</span>
-                    <Badge variant="outline" className="text-primary border-primary">
-                      {GRADE_CONFIG.MIN_PASSING_GRADE.toFixed(1)}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-primary/5 border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                  Resumo da Turma
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-background p-3 rounded-lg border text-center">
-                    <p className="text-xs text-muted-foreground uppercase">Média Geral</p>
-                    <p className="text-2xl font-bold text-primary">7.8</p>
-                  </div>
-                  <div className="bg-background p-3 rounded-lg border text-center">
-                    <p className="text-xs text-muted-foreground uppercase">Aprovados</p>
-                    <p className="text-2xl font-bold text-green-600">85%</p>
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full" size="sm">
-                  Ver Relatório Detalhado
-                </Button>
-              </CardContent>
-            </Card>
-
-            {classInfo.gradeLevel === 'infantil' && (
-              <Card className="border-yellow-200 bg-yellow-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-yellow-800">
-                    <Info className="h-4 w-4" />
-                    Educação Infantil
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-yellow-700 leading-relaxed">
-                    Para o nível infantil, o sistema aceita conceitos qualitativos. 
-                    Utilize: Excelente (10), Bom (7), Regular (5) ou Insuficiente (3).
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
         </div>
       </div>
-    </DashboardLayout>
+    );
+  }
+
+  // Obter lista única de avaliações
+  const assessmentNames = Array.from(
+    new Set(studentsGrades.flatMap((s) => s.grades.map((g) => g.assessment_name)))
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <GraduationCap className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">ALETHEIA</h1>
+              <p className="text-sm text-gray-600">Painel do Professor</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">{userName || userEmail}</p>
+              <p className="text-xs text-gray-600">Professor</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-64 bg-white border-r min-h-screen">
+          <nav className="p-4 space-y-2">
+            <Link
+              to="/professor/dashboard"
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              to="/professor/turmas"
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Users className="h-5 w-5" />
+              <span>Turmas</span>
+            </Link>
+            <Link
+              to="/professor/aulas"
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <BookOpen className="h-5 w-5" />
+              <span>Aulas</span>
+            </Link>
+            <Link
+              to="/professor/chamada"
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <ClipboardCheck className="h-5 w-5" />
+              <span>Chamada</span>
+            </Link>
+            <Link
+              to="/professor/notas"
+              className="flex items-center space-x-3 px-3 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg"
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span>Notas</span>
+            </Link>
+            <Link
+              to="/professor/assistente-ia"
+              className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Brain className="h-5 w-5" />
+              <span>Assistente IA</span>
+            </Link>
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Lançamento de Notas</h1>
+                <p className="text-gray-600">
+                  Gerencie o desempenho acadêmico dos alunos
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={loadGrades}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Atualizar
+                </Button>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nova Avaliação
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Criar Nova Avaliação</DialogTitle>
+                      <DialogDescription>
+                        Adicione uma nova avaliação para lançar notas
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div>
+                        <Label>Nome da Avaliação</Label>
+                        <Input
+                          placeholder="Ex: Prova Bimestral"
+                          value={newAssessment.name}
+                          onChange={(e) =>
+                            setNewAssessment({ ...newAssessment, name: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Tipo</Label>
+                        <Select
+                          value={newAssessment.type}
+                          onValueChange={(value) =>
+                            setNewAssessment({ ...newAssessment, type: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="prova">Prova</SelectItem>
+                            <SelectItem value="trabalho">Trabalho</SelectItem>
+                            <SelectItem value="seminario">Seminário</SelectItem>
+                            <SelectItem value="participacao">Participação</SelectItem>
+                            <SelectItem value="outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Disciplina</Label>
+                        <Input
+                          placeholder="Ex: Matemática"
+                          value={newAssessment.subject}
+                          onChange={(e) =>
+                            setNewAssessment({ ...newAssessment, subject: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleAddAssessment} disabled={saving}>
+                        {saving ? 'Criando...' : 'Criar Avaliação'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button onClick={handleSaveGrades} disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Salvando...' : 'Salvar Notas'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-4">
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Selecionar turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name} - {cls.grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={selectedQuarter.toString()}
+                onValueChange={(val) => setSelectedQuarter(parseInt(val))}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1º Bimestre</SelectItem>
+                  <SelectItem value="2">2º Bimestre</SelectItem>
+                  <SelectItem value="3">3º Bimestre</SelectItem>
+                  <SelectItem value="4">4º Bimestre</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar aluno..."
+                  className="pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Notas dos Alunos</CardTitle>
+                <CardDescription>
+                  Insira as notas de 0.0 a 10.0 para cada avaliação
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {assessmentNames.length > 0 ? (
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="w-[250px]">Aluno</TableHead>
+                          {assessmentNames.map((name) => (
+                            <TableHead key={name} className="text-center">
+                              {name}
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center font-bold text-blue-600">
+                            Média
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredStudents.map((student) => {
+                          const average = calculateAverage(student.grades);
+                          const isPassing = average !== null && parseFloat(average) >= 6.0;
+
+                          return (
+                            <TableRow key={student.student_id}>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{student.full_name}</span>
+                                  <span className="text-xs text-gray-500">
+                                    Mat: {student.registration_number}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              {assessmentNames.map((name) => {
+                                const gradeObj = student.grades.find(
+                                  (g) => g.assessment_name === name
+                                );
+                                return (
+                                  <TableCell key={name} className="text-center">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="10"
+                                      step="0.1"
+                                      className="w-16 mx-auto text-center h-8"
+                                      value={gradeObj?.grade || ''}
+                                      onChange={(e) =>
+                                        handleGradeChange(
+                                          student.student_id,
+                                          name,
+                                          e.target.value
+                                        )
+                                      }
+                                    />
+                                  </TableCell>
+                                );
+                              })}
+                              <TableCell className="text-center font-bold text-blue-600">
+                                {average || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center">
+                    <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 mb-4">
+                      Nenhuma avaliação criada para este bimestre
+                    </p>
+                    <Button onClick={() => setIsAddDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Criar Primeira Avaliação
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 };
 

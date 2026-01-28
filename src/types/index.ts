@@ -1,30 +1,51 @@
-export type UserRole = 'admin' | 'secretaria' | 'professor' | 'aluno';
+export type UserRole = 'super_admin' | 'network_admin' | 'admin' | 'secretaria' | 'professor' | 'aluno';
 
 export type GradeLevel = 'infantil' | 'fundamental_1' | 'fundamental_2' | 'medio';
 
 export type AttendanceStatus = 'presente' | 'ausente' | 'atrasado' | 'justificado';
 
+export interface Network {
+  id: string;
+  name: string;
+  adminUserId?: string;
+  cnpj?: string;
+  email: string;
+  phone?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface School {
   id: string;
   name: string;
-  slug: string;
-  address?: string;
+  email: string;
   phone?: string;
-  email?: string;
-  logoUrl?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  networkId?: string;
+  network_id?: string; // Campo do banco (snake_case)
+  adminUserId?: string;
+  admin_user_id?: string; // Campo do banco (snake_case)
   active: boolean;
   createdAt: string;
+  updatedAt: string;
+  created_at?: string; // Campo do banco (snake_case)
+  updated_at?: string; // Campo do banco (snake_case)
 }
 
 export interface User {
   id: string;
   email: string;
   role: UserRole;
-  schoolId: string;
+  schoolId?: string | null;
   fullName: string;
   avatarUrl?: string;
   active: boolean;
   lastLogin?: string;
+  phone?: string;
 }
 
 export interface Student {

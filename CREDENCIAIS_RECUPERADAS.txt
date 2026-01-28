@@ -1,0 +1,171 @@
+============================================
+CREDENCIAIS RECUPERADAS - SISTEMA ALETHEIA
+============================================
+
+📅 Data: 27/01/2026
+🔄 Status: Dados Existentes Recuperados
+🌐 URL: http://localhost:8081
+
+============================================
+PASSO 1: VERIFICAR DADOS EXISTENTES
+============================================
+
+1. Acesse: https://app.supabase.com/project/dhwtumzkroveaijsrarg/sql/new
+
+2. Abra o arquivo: supabase\verify_existing_data.sql
+
+3. Copie e execute o script completo
+
+4. Anote os emails de todos os usuários encontrados
+
+============================================
+PASSO 2: RESETAR SENHAS PARA PADRÕES
+============================================
+
+1. No mesmo SQL Editor, abra: supabase\reset_passwords.sql
+
+2. Copie e execute o script completo
+
+3. Aguarde a mensagem de sucesso
+
+4. Todas as senhas serão resetadas para padrões conhecidos
+
+============================================
+SENHAS PADRÃO POR PERFIL
+============================================
+
+SUPER ADMIN
+-----------
+Email:      (será mostrado no script de verificação)
+Senha:      Super@123456
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/superadmin/dashboard
+
+NETWORK ADMIN
+-------------
+Email:      (será mostrado no script de verificação)
+Senha:      Network@123
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/networkadmin/dashboard
+
+ADMIN (ESCOLA)
+--------------
+Email:      (será mostrado no script de verificação)
+Senha:      Admin@123
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/admin/dashboard
+
+SECRETARIA
+----------
+Email:      (será mostrado no script de verificação)
+Senha:      Secret@123
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/secretaria/dashboard
+
+PROFESSOR
+---------
+Email:      (será mostrado no script de verificação)
+Senha:      Prof@123
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/professor/dashboard
+
+ALUNO
+-----
+Email:      (será mostrado no script de verificação)
+Senha:      Aluno@123
+URL Login:  http://localhost:8081/#/login
+Dashboard:  http://localhost:8081/#/aluno/dashboard
+
+============================================
+PASSO 3: FAZER LOGIN E TESTAR
+============================================
+
+1. Abra o navegador em: http://localhost:8081/#/login
+
+2. Escolha um usuário da lista (comece pelo Super Admin)
+
+3. Digite o email (da verificação) e a senha padrão
+
+4. Clique em "Entrar"
+
+5. Você será redirecionado para o dashboard correspondente
+
+============================================
+CHECKLIST DE TESTES
+============================================
+
+Após fazer login com cada perfil, verifique:
+
+□ Super Admin
+  □ Dashboard carrega
+  □ Vê estatísticas gerais
+  □ Pode criar redes
+  □ Pode criar escolas
+
+□ Network Admin
+  □ Dashboard carrega
+  □ Vê apenas escolas da sua rede
+  □ Pode gerenciar escolas da rede
+
+□ Admin (Escola)
+  □ Dashboard carrega
+  □ Vê estatísticas da escola
+  □ Pode criar usuários
+  □ Pode acessar financeiro
+
+□ Secretaria
+  □ Dashboard carrega
+  □ Pode matricular alunos
+  □ Pode criar turmas
+  □ Vê lista de alunos
+
+□ Professor
+  □ Dashboard carrega
+  □ Vê suas turmas
+  □ Pode lançar frequência
+  □ Pode lançar notas
+
+□ Aluno
+  □ Dashboard carrega
+  □ Vê suas notas
+  □ Vê sua frequência
+  □ NÃO vê dados de outros alunos
+
+============================================
+TROUBLESHOOTING
+============================================
+
+Problema: Senha não funciona
+Solução: Execute o script reset_passwords.sql novamente
+
+Problema: Usuário não encontrado
+Solução: Verifique se o email está correto no script verify_existing_data.sql
+
+Problema: Erro de permissão
+Solução: Verifique se o usuário está ativo (active = true)
+
+Problema: Página não carrega
+Solução: Verifique se o servidor está rodando em http://localhost:8081
+
+============================================
+PRÓXIMOS PASSOS
+============================================
+
+Depois de validar os logins:
+
+1. Teste TODAS as funcionalidades de cada painel
+2. Verifique se os dados estão corretos
+3. Teste criação de novos registros
+4. Valide segurança (isolamento multi-tenant)
+5. Confirme que RLS está funcionando
+
+============================================
+SUPORTE
+============================================
+
+Se precisar de ajuda:
+- Consulte: GUIA_TESTES_COMPLETO.md
+- Consulte: README.md
+- Consulte: DEPLOY.md
+
+============================================

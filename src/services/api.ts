@@ -10,14 +10,20 @@ import {
   Lesson, 
   Attendance 
 } from '@/types';
+import { MOCK_MODE } from '@/data/mockData';
+import * as mockApi from '@/services/mockApi';
 
-// Tipos para as tabelas do banco
 interface DatabaseUser extends User {
-  school_id: string;
+  school_id: string | null;
+  network_id?: string | null;
   full_name: string;
+  cpf?: string;
+  address?: string;
 }
 
 interface DatabaseSchool extends School {
+  network_id?: string | null;
+  admin_user_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -38,16 +44,80 @@ interface DatabaseSubject extends Subject {
 }
 
 interface DatabaseStudent extends Student {
-  user_id: string;
-  class_id?: string;
+  school_id: string;
+  user_id?: string | null;
+  class_id?: string | null;
   registration_number: string;
   birth_date?: string;
   guardian_name: string;
   guardian_phone: string;
   guardian_email?: string;
+  guardian_cpf?: string;
   special_needs: boolean;
   special_needs_description?: string;
   enrollment_date: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseTeacher extends Teacher {
+  school_id: string;
+  user_id: string;
+  specialization?: string;
+  bio?: string;
+  status?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseGrade {
+  id: string;
+  student_id: string;
+  class_id: string;
+  teacher_id: string;
+  school_id: string;
+  subject_id?: string;
+  subject: string;
+  assessment_type: string;
+  assessment_name: string;
+  grade: number;
+  max_grade: number;
+  weight: number;
+  quarter: number;
+  date: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseAttendance {
+  id: string;
+  student_id: string;
+  class_id: string;
+  teacher_id: string;
+  school_id: string;
+  lesson_id?: string;
+  date: string;
+  status: 'presente' | 'ausente' | 'falta' | 'atrasado' | 'justificado' | 'justificada';
+  remarks?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseLesson {
+  id: string;
+  teacher_id: string;
+  subject_id: string;
+  class_id: string;
+  school_id: string;
+  title: string;
+  content?: string;
+  objectives?: string;
+  lesson_date: string;
+  start_time?: string;
+  end_time?: string;
+  quarter: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -78,7 +148,19 @@ interface SystemSetting {
   updated_at: string;
 }
 
-export const authService = {
+interface Network {
+  id: string;
+  name: string;
+  admin_user_id?: string;
+  cnpj?: string;
+  email: string;
+  phone?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const authService = MOCK_MODE ? mockApi.mockAuthService : {
   getCurrentSession: () => supabase.auth.getSession(),
   onAuthStateChange: (callback: any) => supabase.auth.onAuthStateChange(callback),
   signInWithPassword: (credentials: { email: string; password: string }) => 
@@ -86,237 +168,951 @@ export const authService = {
   signOut: () => supabase.auth.signOut(),
   signUp: (credentials: { email: string; password: string; options?: any }) =>
     supabase.auth.signUp(credentials),
+  resetPasswordForEmail: (email: string) =>
+    supabase.auth.resetPasswordForEmail(email),
+  updatePassword: (password: string) =>
+    supabase.auth.updateUser({ password }),
 };
 
-export const userService = {
+export const userService = MOCK_MODE ? mockApi.mockUserService : {
   getProfile: async (userId: string): Promise<DatabaseUser | null> => {
-    const { data, error } = await supabase
-      .from('users_2026_01_26_15_30')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error fetching user profile:', error);
-      return null;
+      throw error;
     }
-    return data;
   },
 
   getAllUsers: async (): Promise<DatabaseUser[]> => {
-    const { data, error } = await supabase
-      .from('users_2026_01_26_15_30')
-      .select('*')
-      .order('full_name');
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('full_name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching users:', error);
       return [];
     }
-    return data || [];
+  },
+
+  getUsersBySchool: async (schoolId: string): Promise<DatabaseUser[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('full_name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching users by school:', error);
+      return [];
+    }
   },
 
   createUser: async (userData: Partial<DatabaseUser>): Promise<DatabaseUser | null> => {
-    const { data, error } = await supabase
-      .from('users_2026_01_26_15_30')
-      .insert(userData)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert(userData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error creating user:', error);
-      return null;
+      throw error;
     }
-    return data;
   },
 
   updateUser: async (userId: string, updates: Partial<DatabaseUser>): Promise<DatabaseUser | null> => {
-    const { data, error } = await supabase
-      .from('users_2026_01_26_15_30')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error updating user:', error);
-      return null;
+      throw error;
     }
-    return data;
   },
 
   deleteUser: async (userId: string): Promise<boolean> => {
-    const { error } = await supabase
-      .from('users_2026_01_26_15_30')
-      .delete()
-      .eq('id', userId);
-    
-    if (error) {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
       console.error('Error deleting user:', error);
       return false;
     }
-    return true;
   }
 };
 
-export const schoolService = {
+export const schoolService = MOCK_MODE ? mockApi.mockSchoolService : {
+  getAll: async (): Promise<DatabaseSchool[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching schools:', error);
+      return [];
+    }
+  },
+
   getById: async (id: string): Promise<DatabaseSchool | null> => {
-    const { data, error } = await supabase
-      .from('schools_2026_01_26_15_30')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error fetching school:', error);
       return null;
     }
-    return data;
+  },
+
+  getByNetwork: async (networkId: string): Promise<DatabaseSchool[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('network_id', networkId)
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching schools by network:', error);
+      return [];
+    }
+  },
+
+  createSchool: async (schoolData: Partial<DatabaseSchool>): Promise<DatabaseSchool | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .insert(schoolData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating school:', error);
+      throw error;
+    }
   },
 
   updateSchool: async (id: string, updates: Partial<DatabaseSchool>): Promise<DatabaseSchool | null> => {
-    const { data, error } = await supabase
-      .from('schools_2026_01_26_15_30')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error updating school:', error);
-      return null;
+      throw error;
     }
-    return data;
   }
 };
 
-export const classService = {
+export const classService = MOCK_MODE ? mockApi.mockClassService : {
   getAll: async (): Promise<DatabaseClass[]> => {
-    const { data, error } = await supabase
-      .from('classes_2026_01_26_15_30')
-      .select('*')
-      .order('name');
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching classes:', error);
       return [];
     }
-    return data || [];
+  },
+
+  getBySchool: async (schoolId: string): Promise<DatabaseClass[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching classes by school:', error);
+      return [];
+    }
   },
 
   getById: async (id: string): Promise<DatabaseClass | null> => {
-    const { data, error } = await supabase
-      .from('classes_2026_01_26_15_30')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error fetching class:', error);
       return null;
     }
-    return data;
+  },
+
+  getByTeacher: async (teacherId: string): Promise<DatabaseClass[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('teacher_id', teacherId)
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching classes by teacher:', error);
+      return [];
+    }
   },
 
   createClass: async (classData: Partial<DatabaseClass>): Promise<DatabaseClass | null> => {
-    const { data, error } = await supabase
-      .from('classes_2026_01_26_15_30')
-      .insert(classData)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .insert(classData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error creating class:', error);
-      return null;
+      throw error;
     }
-    return data;
   },
 
   updateClass: async (id: string, updates: Partial<DatabaseClass>): Promise<DatabaseClass | null> => {
-    const { data, error } = await supabase
-      .from('classes_2026_01_26_15_30')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error updating class:', error);
-      return null;
+      throw error;
     }
-    return data;
   }
 };
 
-export const subjectService = {
+export const subjectService = MOCK_MODE ? mockApi.mockSubjectService : {
   getAll: async (): Promise<DatabaseSubject[]> => {
-    const { data, error } = await supabase
-      .from('subjects_2026_01_26_15_30')
-      .select('*')
-      .order('name');
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching subjects:', error);
       return [];
     }
-    return data || [];
+  },
+
+  getBySchool: async (schoolId: string): Promise<DatabaseSubject[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching subjects by school:', error);
+      return [];
+    }
+  },
+
+  createSubject: async (subjectData: Partial<DatabaseSubject>): Promise<DatabaseSubject | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert(subjectData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating subject:', error);
+      throw error;
+    }
   }
 };
 
-export const studentService = {
+export const studentService = MOCK_MODE ? mockApi.mockStudentService : {
   getAll: async (): Promise<DatabaseStudent[]> => {
-    const { data, error } = await supabase
-      .from('students_2026_01_26_15_30')
-      .select(`
-        *,
-        user:users_2026_01_26_15_30(full_name, email),
-        class:classes_2026_01_26_15_30(name)
-      `)
-      .order('registration_number');
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          *,
+          user:users(full_name, email),
+          class:classes(name)
+        `)
+        .order('registration_number');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching students:', error);
       return [];
     }
-    return data || [];
+  },
+
+  getBySchool: async (schoolId: string): Promise<DatabaseStudent[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          *,
+          user:users(full_name, email),
+          class:classes(name)
+        `)
+        .eq('school_id', schoolId)
+        .order('registration_number');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching students by school:', error);
+      return [];
+    }
+  },
+
+  getByClass: async (classId: string): Promise<DatabaseStudent[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          *,
+          user:users(full_name, email)
+        `)
+        .eq('class_id', classId)
+        .order('registration_number');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching students by class:', error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<DatabaseStudent | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          *,
+          user:users(full_name, email),
+          class:classes(name)
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching student:', error);
+      return null;
+    }
   },
 
   createStudent: async (studentData: Partial<DatabaseStudent>): Promise<DatabaseStudent | null> => {
-    const { data, error } = await supabase
-      .from('students_2026_01_26_15_30')
-      .insert(studentData)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .insert(studentData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error creating student:', error);
-      return null;
+      throw error;
     }
-    return data;
+  },
+
+  updateStudent: async (id: string, updates: Partial<DatabaseStudent>): Promise<DatabaseStudent | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating student:', error);
+      throw error;
+    }
   }
 };
 
-export const financialService = {
+export const teacherService = MOCK_MODE ? mockApi.mockTeacherService : {
+  getById: async (id: string): Promise<DatabaseTeacher | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select(`
+          *,
+          user:users(full_name, email, phone)
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching teacher:', error);
+      return null;
+    }
+  },
+
+  getByUserId: async (userId: string): Promise<DatabaseTeacher | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching teacher by user:', error);
+      return null;
+    }
+  },
+
+  getBySchool: async (schoolId: string): Promise<DatabaseTeacher[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select(`
+          *,
+          user:users(full_name, email, phone)
+        `)
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching teachers by school:', error);
+      return [];
+    }
+  },
+
+  create: async (teacherData: Partial<DatabaseTeacher>): Promise<DatabaseTeacher | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .insert(teacherData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating teacher:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, updates: Partial<DatabaseTeacher>): Promise<DatabaseTeacher | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating teacher:', error);
+      throw error;
+    }
+  }
+};
+
+export const gradeService = MOCK_MODE ? mockApi.mockGradeService : {
+  getByStudent: async (studentId: string): Promise<DatabaseGrade[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching grades by student:', error);
+      return [];
+    }
+  },
+
+  getByClass: async (classId: string): Promise<DatabaseGrade[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('class_id', classId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching grades by class:', error);
+      return [];
+    }
+  },
+
+  getByClassAndSubject: async (classId: string, subject: string): Promise<DatabaseGrade[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('class_id', classId)
+        .eq('subject', subject)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching grades by class and subject:', error);
+      return [];
+    }
+  },
+
+  getBulkByClass: async (classId: string): Promise<DatabaseGrade[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .select(`
+          *,
+          student:students(registration_number, user:users(full_name))
+        `)
+        .eq('class_id', classId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching bulk grades:', error);
+      return [];
+    }
+  },
+
+  createGrade: async (gradeData: Partial<DatabaseGrade>): Promise<DatabaseGrade | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .insert(gradeData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating grade:', error);
+      throw error;
+    }
+  },
+
+  updateGrade: async (id: string, updates: Partial<DatabaseGrade>): Promise<DatabaseGrade | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('grades')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating grade:', error);
+      throw error;
+    }
+  },
+
+  deleteGrade: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('grades')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting grade:', error);
+      return false;
+    }
+  }
+};
+
+export const attendanceService = MOCK_MODE ? mockApi.mockAttendanceService : {
+  getByStudent: async (studentId: string, dateRange?: { start: string; end: string }): Promise<DatabaseAttendance[]> => {
+    try {
+      let query = supabase
+        .from('attendance')
+        .select('*')
+        .eq('student_id', studentId);
+      
+      if (dateRange) {
+        query = query.gte('date', dateRange.start).lte('date', dateRange.end);
+      }
+      
+      const { data, error } = await query.order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching attendance by student:', error);
+      return [];
+    }
+  },
+
+  getByClass: async (classId: string, dateRange?: { start: string; end: string }): Promise<DatabaseAttendance[]> => {
+    try {
+      let query = supabase
+        .from('attendance')
+        .select(`
+          *,
+          student:students(registration_number, user:users(full_name))
+        `)
+        .eq('class_id', classId);
+      
+      if (dateRange) {
+        query = query.gte('date', dateRange.start).lte('date', dateRange.end);
+      }
+      
+      const { data, error } = await query.order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching attendance by class:', error);
+      return [];
+    }
+  },
+
+  getByLesson: async (lessonId: string): Promise<DatabaseAttendance[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select(`
+          *,
+          student:students(registration_number, user:users(full_name))
+        `)
+        .eq('lesson_id', lessonId)
+        .order('student_id');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching attendance by lesson:', error);
+      return [];
+    }
+  },
+
+  saveAttendance: async (records: Partial<DatabaseAttendance>[]): Promise<DatabaseAttendance[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .upsert(records, { 
+          onConflict: 'student_id,class_id,date',
+          ignoreDuplicates: false 
+        })
+        .select();
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      throw error;
+    }
+  },
+
+  getAttendanceStats: async (studentId: string): Promise<{
+    total: number;
+    present: number;
+    absent: number;
+    rate: number;
+  }> => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('status')
+        .eq('student_id', studentId);
+      
+      if (error) throw error;
+      
+      const total = data?.length || 0;
+      const present = data?.filter(a => a.status === 'presente').length || 0;
+      const absent = data?.filter(a => a.status === 'falta' || a.status === 'ausente').length || 0;
+      const rate = total > 0 ? (present / total) * 100 : 0;
+      
+      return { total, present, absent, rate };
+    } catch (error) {
+      console.error('Error fetching attendance stats:', error);
+      return { total: 0, present: 0, absent: 0, rate: 0 };
+    }
+  }
+};
+
+export const lessonService = MOCK_MODE ? mockApi.mockLessonService : {
+  getByClass: async (classId: string): Promise<DatabaseLesson[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          teacher:users(full_name),
+          subject:subjects(name)
+        `)
+        .eq('class_id', classId)
+        .order('lesson_date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching lessons by class:', error);
+      return [];
+    }
+  },
+
+  getByTeacher: async (teacherId: string): Promise<DatabaseLesson[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          class:classes(name),
+          subject:subjects(name)
+        `)
+        .eq('teacher_id', teacherId)
+        .order('lesson_date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching lessons by teacher:', error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<DatabaseLesson | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          teacher:users(full_name),
+          class:classes(name),
+          subject:subjects(name)
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching lesson:', error);
+      return null;
+    }
+  },
+
+  createLesson: async (lessonData: Partial<DatabaseLesson>): Promise<DatabaseLesson | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .insert(lessonData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      throw error;
+    }
+  },
+
+  updateLesson: async (id: string, updates: Partial<DatabaseLesson>): Promise<DatabaseLesson | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+      throw error;
+    }
+  },
+
+  deleteLesson: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('lessons')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      return false;
+    }
+  }
+};
+
+export const financialService = MOCK_MODE ? mockApi.mockFinancialService : {
   getTransactions: async (): Promise<FinancialTransaction[]> => {
-    const { data, error } = await supabase
-      .from('financial_transactions_2026_01_26_15_30')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching financial transactions:', error);
       return [];
     }
-    return data || [];
   },
 
-  getFinancialStats: async () => {
-    // Buscar estatísticas financeiras
-    const { data: transactions, error } = await supabase
-      .from('financial_transactions_2026_01_26_15_30')
-      .select('type, amount, status');
-    
-    if (error) {
+  getBySchool: async (schoolId: string): Promise<FinancialTransaction[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching transactions by school:', error);
+      return [];
+    }
+  },
+
+  getFinancialStats: async (schoolId?: string) => {
+    try {
+      let query = supabase
+        .from('financial_transactions')
+        .select('type, amount, status');
+      
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+      
+      const { data: transactions, error } = await query;
+      
+      if (error) throw error;
+
+      const stats = transactions?.reduce((acc, transaction) => {
+        if (transaction.type === 'receita') {
+          acc.totalRevenue += transaction.amount;
+          if (transaction.status === 'pendente') {
+            acc.pendingAmount += transaction.amount;
+          } else if (transaction.status === 'atrasado') {
+            acc.overdueAmount += transaction.amount;
+          }
+        } else if (transaction.type === 'despesa') {
+          acc.totalExpenses += transaction.amount;
+        }
+        return acc;
+      }, {
+        totalRevenue: 0,
+        totalExpenses: 0,
+        pendingAmount: 0,
+        overdueAmount: 0
+      });
+
+      return stats || {
+        totalRevenue: 0,
+        totalExpenses: 0,
+        pendingAmount: 0,
+        overdueAmount: 0
+      };
+    } catch (error) {
       console.error('Error fetching financial stats:', error);
       return {
         totalRevenue: 0,
@@ -325,92 +1121,79 @@ export const financialService = {
         overdueAmount: 0
       };
     }
-
-    const stats = transactions?.reduce((acc, transaction) => {
-      if (transaction.type === 'receita') {
-        acc.totalRevenue += transaction.amount;
-        if (transaction.status === 'pendente') {
-          acc.pendingAmount += transaction.amount;
-        } else if (transaction.status === 'atrasado') {
-          acc.overdueAmount += transaction.amount;
-        }
-      } else if (transaction.type === 'despesa') {
-        acc.totalExpenses += transaction.amount;
-      }
-      return acc;
-    }, {
-      totalRevenue: 0,
-      totalExpenses: 0,
-      pendingAmount: 0,
-      overdueAmount: 0
-    });
-
-    return stats || {
-      totalRevenue: 0,
-      totalExpenses: 0,
-      pendingAmount: 0,
-      overdueAmount: 0
-    };
   },
 
   createTransaction: async (transactionData: Partial<FinancialTransaction>): Promise<FinancialTransaction | null> => {
-    const { data, error } = await supabase
-      .from('financial_transactions_2026_01_26_15_30')
-      .insert(transactionData)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .insert(transactionData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error creating transaction:', error);
-      return null;
+      throw error;
     }
-    return data;
   }
 };
 
-export const systemService = {
-  getSettings: async (): Promise<SystemSetting[]> => {
-    const { data, error } = await supabase
-      .from('system_settings_2026_01_26_15_30')
-      .select('*')
-      .order('setting_key');
-    
-    if (error) {
+export const systemService = MOCK_MODE ? mockApi.mockSystemService : {
+  getSettings: async (schoolId?: string): Promise<SystemSetting[]> => {
+    try {
+      let query = supabase
+        .from('system_settings')
+        .select('*')
+        .order('setting_key');
+      
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
       console.error('Error fetching system settings:', error);
       return [];
     }
-    return data || [];
   },
 
   updateSetting: async (schoolId: string, key: string, value: string): Promise<SystemSetting | null> => {
-    const { data, error } = await supabase
-      .from('system_settings_2026_01_26_15_30')
-      .upsert({
-        school_id: schoolId,
-        setting_key: key,
-        setting_value: value,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .upsert({
+          school_id: schoolId,
+          setting_key: key,
+          setting_value: value,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
       console.error('Error updating setting:', error);
-      return null;
+      throw error;
     }
-    return data;
   }
 };
 
-export const dashboardService = {
-  getAdminStats: async () => {
+export const dashboardService = MOCK_MODE ? mockApi.mockDashboardService : {
+  getAdminStats: async (schoolId?: string) => {
     try {
-      // Buscar estatísticas gerais
+      const schoolFilter = schoolId ? `.eq('school_id', '${schoolId}')` : '';
+      
       const [usersResult, studentsResult, classesResult, financialStats] = await Promise.all([
-        supabase.from('users_2026_01_26_15_30').select('role', { count: 'exact' }),
-        supabase.from('students_2026_01_26_15_30').select('status', { count: 'exact' }),
-        supabase.from('classes_2026_01_26_15_30').select('active', { count: 'exact' }),
-        financialService.getFinancialStats()
+        supabase.from('users').select('role', { count: 'exact' }),
+        supabase.from('students').select('status', { count: 'exact' }),
+        supabase.from('classes').select('active', { count: 'exact' }),
+        financialService.getFinancialStats(schoolId)
       ]);
 
       const usersByRole = usersResult.data?.reduce((acc: any, user: any) => {
@@ -444,23 +1227,116 @@ export const dashboardService = {
   }
 };
 
-// Manter compatibilidade com código existente
+export const networkService = MOCK_MODE ? mockApi.mockNetworkService : {
+  getAll: async (): Promise<Network[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('networks')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching networks:', error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<Network | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('networks')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching network:', error);
+      return null;
+    }
+  },
+
+  create: async (networkData: {
+    name: string;
+    cnpj?: string;
+    email: string;
+    phone?: string;
+    adminName: string;
+    adminEmail: string;
+    adminPassword: string;
+  }): Promise<Network> => {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: networkData.adminEmail,
+        password: networkData.adminPassword,
+        options: {
+          data: { full_name: networkData.adminName, role: 'network_admin' }
+        }
+      });
+      
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create auth user');
+
+      const { data: network, error: networkError } = await supabase
+        .from('networks')
+        .insert({
+          name: networkData.name,
+          cnpj: networkData.cnpj,
+          email: networkData.email,
+          phone: networkData.phone,
+          admin_user_id: authData.user.id
+        })
+        .select()
+        .single();
+      
+      if (networkError) throw networkError;
+
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          school_id: null,
+          network_id: network.id,
+          full_name: networkData.adminName,
+          email: networkData.adminEmail,
+          role: 'network_admin',
+          active: true
+        });
+      
+      if (userError) throw userError;
+
+      return network;
+    } catch (error) {
+      console.error('Error creating network:', error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, updates: {
+    name?: string;
+    cnpj?: string;
+    email?: string;
+    phone?: string;
+    active?: boolean;
+  }): Promise<Network | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('networks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating network:', error);
+      throw error;
+    }
+  }
+};
+
 export { supabase };
-export const gradeService = {
-  getByClassAndSubject: async (classId: string, subjectId: string) => [],
-  updateGrade: async (id: string, updates: Partial<Grade>) => ({} as Grade)
-};
-
-export const attendanceService = {
-  getByLesson: async (lessonId: string) => [],
-  saveAttendance: async (records: Omit<Attendance, 'id'>[]) => []
-};
-
-export const lessonService = {
-  getByClass: async (classId: string) => [],
-  createLesson: async (lessonData: Omit<Lesson, 'id'>) => ({} as Lesson)
-};
-
-export const teacherService = {
-  getById: async (id: string) => ({} as Teacher)
-};

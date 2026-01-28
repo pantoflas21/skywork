@@ -3,6 +3,7 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { User, UserRole } from '@/types';
 import { ROUTES } from '@/constants';
 import { authService, userService } from '@/services/api';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +21,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getRedirectPath = (role: UserRole) => {
     switch (role) {
+      case 'super_admin': return '/superadmin/dashboard';
+      case 'network_admin': return '/networkadmin/dashboard';
       case 'admin': return ROUTES.ADMIN.DASHBOARD;
       case 'secretaria': return ROUTES.SECRETARY.DASHBOARD;
       case 'professor': return ROUTES.TEACHER.DASHBOARD;
@@ -88,30 +91,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await authService.signInWithPassword({ email, password });
       
       if (error) {
-        // Se não conseguir fazer login real, usar simulação para demo
-        console.log('Using demo login for:', email);
-        
-        let role: UserRole = 'aluno';
-        if (email.includes('admin')) role = 'admin';
-        else if (email.includes('secretaria')) role = 'secretaria';
-        else if (email.includes('professor')) role = 'professor';
-
-        const mockUser: User = {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          fullName: 'Usuário Demo',
-          email,
-          role,
-          schoolId: '550e8400-e29b-41d4-a716-446655440000',
-          active: true
-        };
-
-        setUser(mockUser);
-        window.location.hash = getRedirectPath(role);
-        return;
+        console.error('Login error:', error);
+        toast.error('Email ou senha incorretos');
+        throw error;
       }
 
       // Login real bem-sucedido - o perfil será carregado pelo onAuthStateChange
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     } finally {
