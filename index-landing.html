@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALETHEIA - Sistema de Gestão Escolar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo::before {
+            content: "📚";
+            font-size: 32px;
+        }
+
+        .header-contact {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .header-contact a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.3s;
+        }
+
+        .header-contact a:hover {
+            opacity: 0.8;
+        }
+
+        /* HERO SECTION */
+        .hero {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 80px 2rem;
+            text-align: center;
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: slideInDown 0.8s ease;
+        }
+
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            animation: slideInUp 0.8s ease;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 15px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #1e40af;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #1e40af;
+        }
+
+        /* PLANOS */
+        .planos {
+            padding: 80px 2rem;
+            background: #f3f4f6;
+        }
+
+        .planos h2 {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 60px;
+            color: #1e40af;
+        }
+
+        .planos-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card-plano {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        .card-plano:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-plano.destaque {
+            border: 3px solid #3b82f6;
+            transform: scale(1.05);
+        }
+
+        .badge {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3b82f6;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .duracao {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .preco {
+            font-size: 48px;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 20px 0;
+        }
+
+        .preco-info {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .desconto {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .beneficios-plano {
+            text-align: left;
+            margin: 30px 0;
+            font-size: 14px;
+        }
+
+        .beneficios-plano li {
+            list-style: none;
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .beneficios-plano li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #3b82f6;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* CALCULADORA */
+        .calculadora {
+            padding: 80px 2rem;
+            background: white;
+        }
+
+        .calculadora h2 {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 60px;
+            color: #1e40af;
+        }
+
+        .calc-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #f3f4f6;
+            padding: 40px;
+            border-radius: 15px;
+        }
+
+        .calc-exemplo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .calc-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .calc-box h3 {
+            font-size: 18px;
+            color: #1e40af;
+            margin-bottom: 15px;
+        }
+
+        .calc-valor {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .calc-info {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* FEATURES */
+        .features {
+            padding: 80px 2rem;
+            background: #f3f4f6;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 60px;
+            color: #1e40af;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* CTA */
+        .cta {
+            padding: 80px 2rem;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 40px;
+            margin-bottom: 20px;
+        }
+
+        .cta p {
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+
+        /* FOOTER */
+        footer {
+            background: #1e40af;
+            color: white;
+            text-align: center;
+            padding: 30px 2rem;
+            border-top: 3px solid #3b82f6;
+        }
+
+        footer p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        /* ANIMATIONS */
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* RESPONSIVO */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .planos h2, .calculadora h2, .features h2, .cta h2 {
+                font-size: 28px;
+            }
+
+            .preco {
+                font-size: 36px;
+            }
+
+            .card-plano.destaque {
+                transform: scale(1);
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-contact {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="logo">ALETHEIA</div>
+        <div class="header-contact">
+            <a href="#planos">Planos</a>
+            <a href="#features">Benefícios</a>
+            <a href="https://wa.me/558598988586003?text=Olá%21%20Gostaria%20de%20saber%20mais%20sobre%20ALETHEIA%20-%20Sistema%20de%20Gestão%20Escolar" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">WhatsApp</a>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+        <h1>Sistema Inteligente de Gestão Escolar</h1>
+        <p>Simplifique a administração da sua escola com ALETHEIA</p>
+        <div class="hero-buttons">
+            <a href="#planos" class="btn-primary">Ver Planos</a>
+            <a href="https://wa.me/558598988586003?text=Olá%21%20Gostaria%20de%20saber%20mais%20sobre%20ALETHEIA%20-%20Sistema%20de%20Gestão%20Escolar" class="btn-primary">Solicite uma Demonstração</a>
+        </div>
+    </section>
+
+    <!-- PLANOS -->
+    <section class="planos" id="planos">
+        <h2>Nossos Planos</h2>
+        <div class="planos-container">
+            <!-- PLANO 1 -->
+            <div class="card-plano">
+                <div class="duracao">📅 1 ANO</div>
+                <h3 style="font-size: 24px; color: #1e40af; margin-bottom: 15px;">ANUAL</h3>
+                <div class="preco">R$ 2,75<span style="font-size: 20px;">/usuário/mês</span></div>
+                <div class="preco-info">Total: R$ 33 por usuário/ano</div>
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Ideal para escolas que querem testar</p>
+                <ul class="beneficios-plano">
+                    <li>Acesso ao painel completo</li>
+                    <li>Gestão de classes e alunos</li>
+                    <li>Registro de frequência</li>
+                    <li>Relatórios básicos</li>
+                    <li>Suporte por email</li>
+                    <li>Atualizações automáticas</li>
+                </ul>
+                <a href="https://wa.me/558598988586003?text=Olá%21%20Tenho%20interesse%20no%20plano%20ANUAL%20da%20ALETHEIA" class="btn-primary" style="width: 100%;">Escolher Plano</a>
+            </div>
+
+            <!-- PLANO 2 -->
+            <div class="card-plano destaque">
+                <div class="badge">MAIS POPULAR</div>
+                <div class="duracao">📅 2 ANOS</div>
+                <h3 style="font-size: 24px; color: #1e40af; margin-bottom: 15px;">BIENAL</h3>
+                <div class="desconto">18% de desconto</div>
+                <div class="preco">R$ 2,25<span style="font-size: 20px;">/usuário/mês</span></div>
+                <div class="preco-info">Total: R$ 54 por usuário (2 anos)</div>
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Ideal para escolas comprometidas</p>
+                <ul class="beneficios-plano">
+                    <li>Tudo do Plano Anual</li>
+                    <li>Suporte prioritário</li>
+                    <li>Relatórios avançados</li>
+                    <li>Webhooks e integrações</li>
+                    <li>Dashboard customizável</li>
+                    <li>Consulta mensal incluída</li>
+                </ul>
+                <a href="https://wa.me/558598988586003?text=Olá%21%20Tenho%20interesse%20no%20plano%20BIENAL%20da%20ALETHEIA" class="btn-primary" style="width: 100%;">Escolher Plano</a>
+            </div>
+
+            <!-- PLANO 3 -->
+            <div class="card-plano">
+                <div class="duracao">📅 3 ANOS</div>
+                <h3 style="font-size: 24px; color: #1e40af; margin-bottom: 15px;">TRIENAL</h3>
+                <div class="desconto">36% de desconto</div>
+                <div class="preco">R$ 1,75<span style="font-size: 20px;">/usuário/mês</span></div>
+                <div class="preco-info">Total: R$ 63 por usuário (3 anos)</div>
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Máxima economia para sua escola</p>
+                <ul class="beneficios-plano">
+                    <li>Tudo dos planos anteriores</li>
+                    <li>Integração API completa</li>
+                    <li>Suporte telefônico 24/7</li>
+                    <li>Consultoria estratégica</li>
+                    <li>Dados em tempo real</li>
+                    <li>Prioridade em novos features</li>
+                </ul>
+                <a href="https://wa.me/558598988586003?text=Olá%21%20Tenho%20interesse%20no%20plano%20TRIENAL%20da%20ALETHEIA" class="btn-primary" style="width: 100%;">Escolher Plano</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CALCULADORA -->
+    <section class="calculadora">
+        <h2>Quanto Custa para Sua Escola?</h2>
+        <div class="calc-container">
+            <p style="text-align: center; margin-bottom: 40px; font-size: 18px; color: #1e40af;">Exemplo: Escola com <strong>350 usuários</strong></p>
+            <div class="calc-exemplo">
+                <div class="calc-box">
+                    <h3>Plano Anual</h3>
+                    <div class="calc-valor">R$ 962,50</div>
+                    <div class="calc-info">por mês<br>R$ 11.550/ano</div>
+                </div>
+                <div class="calc-box">
+                    <h3>Plano Bienal</h3>
+                    <div class="calc-valor">R$ 787,50</div>
+                    <div class="calc-info">por mês<br>R$ 18.900 (2 anos)</div>
+                </div>
+                <div class="calc-box">
+                    <h3>Plano Trienal</h3>
+                    <div class="calc-valor">R$ 612,50</div>
+                    <div class="calc-info">por mês<br>R$ 22.050 (3 anos)</div>
+                </div>
+            </div>
+            <p style="text-align: center; color: #666; margin-top: 30px;">
+                Quer saber o preço exato para sua escola? 
+                <a href="https://wa.me/558598988586003?text=Qual%20é%20o%20valor%20para%20minha%20escola%3F" style="color: #3b82f6; font-weight: bold; text-decoration: none;">Clique aqui</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features" id="features">
+        <h2>Por Que Escolher ALETHEIA?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Relatórios Detalhados</h3>
+                <p>Acompanhe o desempenho dos alunos com dados em tempo real</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3>Gestão Simplificada</h3>
+                <p>Controle classes, alunos e professores de forma intuitiva</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">✅</div>
+                <h3>Chamada Digital</h3>
+                <p>Registre frequência rapidamente sem papel</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💰</div>
+                <h3>Financeiro Integrado</h3>
+                <p>Controle boletos, cobranças e pagamentos</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Segurança de Dados</h3>
+                <p>Seus dados protegidos com os melhores padrões de segurança</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>Escalável</h3>
+                <p>Cresce junto com sua escola, de 50 a 5000 usuários</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <h2>Pronto para Transformar Sua Escola?</h2>
+        <p>Comece uma demonstração gratuita hoje mesmo</p>
+        <a href="https://wa.me/558598988586003?text=Olá%21%20Gostaria%20de%20uma%20demonstração%20grátis%20da%20ALETHEIA" class="btn-primary" style="padding: 15px 50px; font-size: 18px;">Solicitar Demonstração no WhatsApp</a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p><strong>ALETHEIA</strong> - Sistema de Gestão Escolar</p>
+        <p>WhatsApp: <a href="https://wa.me/558598988586003" style="color: white; text-decoration: underline;">(85) 9 9988-6003</a></p>
+        <p style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 20px;">© 2026 ALETHEIA. Todos os direitos reservados.</p>
+    </footer>
+</body>
+</html>
